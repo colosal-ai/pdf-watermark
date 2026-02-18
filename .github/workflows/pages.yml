@@ -2,7 +2,7 @@ name: Deploy WASM to GitHub Pages
 
 on:
   push:
-    branches: [wasm]
+    branches: [main, wasm]
 
 permissions:
   contents: read
