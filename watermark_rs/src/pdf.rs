@@ -4,19 +4,27 @@ use image::{DynamicImage, RgbImage};
 use lopdf::{Document, Object};
 use std::io::{Cursor, Read};
 
+pub fn extract_pages_from_bytes(data: &[u8]) -> Result<Vec<DynamicImage>> {
+    let doc = Document::load_mem(data).context("No se pudo parsear el PDF")?;
+    extract_from_doc(&doc)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn extract_pages(path: &str) -> Result<Vec<DynamicImage>> {
     let doc = Document::load(path).context("No se pudo abrir el PDF")?;
-    let mut images = Vec::new();
+    extract_from_doc(&doc)
+}
 
+fn extract_from_doc(doc: &Document) -> Result<Vec<DynamicImage>> {
+    let mut images = Vec::new();
     let mut page_ids: Vec<_> = doc.get_pages().into_iter().collect();
     page_ids.sort_by_key(|(num, _)| *num);
 
     for (page_num, page_id) in &page_ids {
-        let image = extract_page_image(&doc, *page_id)
+        let image = extract_page_image(doc, *page_id)
             .with_context(|| format!("Error en página {}", page_num))?;
         images.push(image);
     }
-
     Ok(images)
 }
 
@@ -29,7 +37,7 @@ fn extract_page_image(doc: &Document, page_id: lopdf::ObjectId) -> Result<Dynami
     let resources = resolve_to_dict(doc, page_dict.get(b"Resources")?)?;
     let xobjects = resolve_to_dict(doc, resources.get(b"XObject")?)?;
 
-    for (name, obj_ref) in xobjects.iter() {
+    for (_name, obj_ref) in xobjects.iter() {
         let object = resolve(doc, obj_ref)?;
 
         if let Object::Stream(ref stream) = object {
@@ -44,8 +52,6 @@ fn extract_page_image(doc: &Document, page_id: lopdf::ObjectId) -> Result<Dynami
 
             let width = get_uint(dict, b"Width")?;
             let height = get_uint(dict, b"Height")?;
-
-            let _name = String::from_utf8_lossy(name);
             return decode_stream(stream, width, height);
         }
     }
@@ -71,8 +77,8 @@ fn decode_stream(stream: &lopdf::Stream, w: u32, h: u32) -> Result<DynamicImage>
 
             let components: u32 = 3;
             let expected_raw = (w * h * components) as usize;
-
             let expected_png = ((w * components + 1) * h) as usize;
+
             let data = if data.len() == expected_raw {
                 data
             } else if data.len() == expected_png {

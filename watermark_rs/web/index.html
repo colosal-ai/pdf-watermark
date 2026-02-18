@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Watermark</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --border: #0f3460;
+    --accent: #53d9a8;
+    --accent2: #e94560;
+    --text: #eee;
+    --muted: #888;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 1.5rem;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 1rem;
+  }
+  .card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+  }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(83, 217, 168, 0.05);
+  }
+  .drop-zone.loaded {
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .drop-zone input { display: none; }
+  .drop-zone .label { color: var(--muted); font-size: 0.9rem; }
+  .drop-zone .filename { color: var(--accent); font-weight: 600; font-size: 0.9rem; }
+  .row { display: flex; gap: 1rem; margin-bottom: 0.8rem; }
+  .row > * { flex: 1; min-width: 0; overflow: hidden; }
+  .drop-zone .filename { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+  .slider-wrap { display: flex; align-items: center; gap: 0.6rem; }
+  .slider-wrap input[type=range] {
+    flex: 1; accent-color: var(--accent);
+    height: 6px; cursor: pointer;
+  }
+  .slider-wrap .val {
+    min-width: 60px; text-align: center;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--accent);
+  }
+  .radio-group { display: flex; gap: 0.5rem; }
+  .radio-group label {
+    display: flex; align-items: center; gap: 4px;
+    cursor: pointer; font-size: 0.9rem; color: var(--text);
+  }
+  .radio-group input { accent-color: var(--accent); }
+  button#run {
+    width: 100%; max-width: 520px;
+    padding: 0.9rem;
+    border: none; border-radius: 10px;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 1rem; font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  button#run:hover { opacity: 0.9; }
+  button#run:active { transform: scale(0.98); }
+  button#run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .progress {
+    width: 100%; max-width: 520px;
+    margin-top: 0.8rem;
+    display: none;
+  }
+  .progress .bar-bg {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress .bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+  .progress .status {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 4px;
+    text-align: center;
+  }
+  .result {
+    display: none;
+    width: 100%; max-width: 520px;
+    margin-top: 0.8rem;
+    text-align: center;
+  }
+  .result a {
+    display: inline-block;
+    padding: 0.7rem 2rem;
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .result .meta { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+  .error { color: var(--accent2); font-size: 0.85rem; margin-top: 0.5rem; text-align: center; max-width: 520px; }
+</style>
+</head>
+<body>
+
+<h1>PDF Watermark Tool</h1>
+
+<div class="card">
+  <h2>1. Archivos</h2>
+  <div class="row">
+    <div class="drop-zone" id="pdfZone">
+      <input type="file" accept=".pdf">
+      <div class="label">PDF de entrada</div>
+    </div>
+    <div class="drop-zone" id="logoZone">
+      <input type="file" accept="image/png,image/jpeg">
+      <div class="label">Logo (PNG/JPG)</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. Calidad de salida</h2>
+  <div class="radio-group" style="margin-bottom: 0.8rem;">
+    <label><input type="radio" name="mode" value="lossless"> Lossless</label>
+    <label><input type="radio" name="mode" value="jpeg" checked> JPEG</label>
+  </div>
+  <div id="jpegOpts">
+    <label>Calidad JPEG</label>
+    <div class="slider-wrap">
+      <input type="range" id="quality" min="1" max="100" value="85">
+      <span class="val" id="qualityVal">85</span>
+    </div>
+  </div>
+</div>
+
+<button id="run" disabled>Procesar PDF</button>
+
+<div class="progress" id="progress">
+  <div class="bar-bg"><div class="bar" id="bar"></div></div>
+  <div class="status" id="status">Cargando WASM...</div>
+</div>
+
+<div class="result" id="result">
+  <a id="downloadLink" href="#" download="watermarked.pdf">Descargar PDF</a>
+  <div class="meta" id="resultMeta"></div>
+</div>
+
+<div class="error" id="error"></div>
+
+<div style="margin-top:2rem;font-size:0.8rem;color:var(--muted);">with ❤️ by Colosal.ai</div>
+
+<script type="module">
+import init, { process_pdf } from './pkg/watermark.js';
+
+let wasmReady = false;
+let pdfBytes = null;
+let logoBytes = null;
+
+const pdfZone = document.getElementById('pdfZone');
+const logoZone = document.getElementById('logoZone');
+const runBtn = document.getElementById('run');
+const progress = document.getElementById('progress');
+const bar = document.getElementById('bar');
+const status = document.getElementById('status');
+const result = document.getElementById('result');
+const downloadLink = document.getElementById('downloadLink');
+const resultMeta = document.getElementById('resultMeta');
+const errorEl = document.getElementById('error');
+const qualitySlider = document.getElementById('quality');
+const qualityVal = document.getElementById('qualityVal');
+const jpegOpts = document.getElementById('jpegOpts');
+
+qualitySlider.addEventListener('input', () => {
+  qualityVal.textContent = qualitySlider.value;
+});
+
+function updateJpegOpts() {
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  jpegOpts.style.display = mode === 'jpeg' ? 'block' : 'none';
+}
+document.querySelectorAll('input[name=mode]').forEach(r => {
+  r.addEventListener('change', updateJpegOpts);
+});
+updateJpegOpts();
+
+function setupDropZone(zone, accept, onLoad) {
+  const input = zone.querySelector('input');
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], zone, onLoad);
+  });
+  input.addEventListener('change', () => {
+    if (input.files.length) handleFile(input.files[0], zone, onLoad);
+  });
+}
+
+function handleFile(file, zone, onLoad) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const bytes = new Uint8Array(reader.result);
+    onLoad(bytes, file.name);
+    zone.classList.add('loaded');
+    zone.querySelector('.label').style.display = 'none';
+    let fn = zone.querySelector('.filename');
+    if (!fn) { fn = document.createElement('div'); fn.className = 'filename'; zone.appendChild(fn); }
+    fn.textContent = file.name;
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+let pdfName = 'watermarked.pdf';
+setupDropZone(pdfZone, '.pdf', (bytes, name) => { pdfBytes = bytes; pdfName = name; });
+setupDropZone(logoZone, 'image/*', (bytes, name) => { logoBytes = bytes; });
+
+function checkReady() {
+  runBtn.disabled = !(wasmReady && pdfBytes && logoBytes);
+}
+
+runBtn.addEventListener('click', async () => {
+  errorEl.textContent = '';
+  result.style.display = 'none';
+  progress.style.display = 'block';
+  bar.style.width = '10%';
+  status.textContent = 'Procesando...';
+  runBtn.disabled = true;
+
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  const qualityStr = mode === 'lossless' ? 'lossless' : qualitySlider.value;
+
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    bar.style.width = '30%';
+    status.textContent = 'Extrayendo páginas y aplicando marca de agua...';
+    await new Promise(r => setTimeout(r, 50));
+
+    const t0 = performance.now();
+    const outBytes = process_pdf(pdfBytes, logoBytes, qualityStr);
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+    bar.style.width = '100%';
+    status.textContent = 'Listo';
+
+    const blob = new Blob([outBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    downloadLink.href = url;
+    downloadLink.download = pdfName.replace(/\.pdf$/i, '_colosal.pdf');
+    const sizeMB = (outBytes.length / 1048576).toFixed(1);
+    resultMeta.textContent = `${sizeMB} MB · ${elapsed}s · ${qualityStr === 'lossless' ? 'Flate lossless' : 'JPEG q=' + qualityStr}`;
+    result.style.display = 'block';
+  } catch (e) {
+    errorEl.textContent = 'Error: ' + e;
+    bar.style.width = '0%';
+    progress.style.display = 'none';
+  }
+
+  runBtn.disabled = false;
+});
+
+async function loadWasm() {
+  status.textContent = 'Cargando WASM...';
+  progress.style.display = 'block';
+  bar.style.width = '50%';
+  try {
+    await init();
+    wasmReady = true;
+    bar.style.width = '100%';
+    status.textContent = 'WASM listo';
+    setTimeout(() => { progress.style.display = 'none'; }, 800);
+    checkReady();
+  } catch (e) {
+    status.textContent = 'Error cargando WASM: ' + e;
+    errorEl.textContent = e;
+  }
+}
+
+function markLogoLoaded(bytes, name) {
+  logoBytes = bytes;
+  logoZone.classList.add('loaded');
+  logoZone.querySelector('.label').style.display = 'none';
+  let fn = logoZone.querySelector('.filename');
+  if (!fn) { fn = document.createElement('div'); fn.className = 'filename'; logoZone.appendChild(fn); }
+  fn.textContent = name;
+  checkReady();
+}
+
+async function preloadLogo() {
+  try {
+    const resp = await fetch('logo_colosal.png');
+    if (resp.ok) {
+      const buf = await resp.arrayBuffer();
+      markLogoLoaded(new Uint8Array(buf), 'logo_colosal.png');
+    }
+  } catch (_) {}
+}
+
+loadWasm();
+preloadLogo();
+</script>
+</body>
+</html>

@@ -1,10 +1,16 @@
+#[cfg(not(target_arch = "wasm32"))]
 mod pdf;
+#[cfg(not(target_arch = "wasm32"))]
 mod watermark;
+#[cfg(not(target_arch = "wasm32"))]
 mod builder;
 
+#[cfg(not(target_arch = "wasm32"))]
 use clap::Parser;
+#[cfg(not(target_arch = "wasm32"))]
 use anyhow::Result;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Parser)]
 #[command(name = "watermark", about = "Aplica marca de agua a un PDF de presentación")]
 struct Args {
@@ -24,6 +30,7 @@ struct Args {
     output: String,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<()> {
     let args = Args::parse();
     let quality = watermark::parse_quality(&args.quality)?;
@@ -59,3 +66,6 @@ fn main() -> Result<()> {
     println!("Listo.");
     Ok(())
 }
+
+#[cfg(target_arch = "wasm32")]
+fn main() {}

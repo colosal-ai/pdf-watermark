@@ -9,9 +9,33 @@ use std::io::Write;
 const PAGE_W: f64 = 1376.0;
 const PAGE_H: f64 = 768.0;
 
-pub fn build_pdf(images: &[DynamicImage], output: &str, quality: &Quality) -> Result<()> {
-    let mut doc = Document::with_version("1.4");
+pub fn build_pdf_bytes(images: &[DynamicImage], quality: &Quality) -> Result<Vec<u8>> {
+    let mut doc = build_document(images, quality)?;
+    let mut buf = Vec::new();
+    doc.save_to(&mut buf)?;
+    Ok(buf)
+}
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn build_pdf(images: &[DynamicImage], output: &str, quality: &Quality) -> Result<()> {
+    let buf = build_pdf_bytes(images, quality)?;
+    std::fs::write(output, &buf)?;
+
+    let mode = match quality {
+        Quality::Lossless => "Flate lossless".to_string(),
+        Quality::Jpeg(q) => format!("JPEG q={}", q),
+    };
+    println!(
+        "  PDF generado: {} ({:.1} MB, {})",
+        output,
+        buf.len() as f64 / 1_048_576.0,
+        mode
+    );
+    Ok(())
+}
+
+fn build_document(images: &[DynamicImage], quality: &Quality) -> Result<Document> {
+    let mut doc = Document::with_version("1.4");
     let pages_id = doc.new_object_id();
     let mut page_ids: Vec<Object> = Vec::new();
 
@@ -52,21 +76,7 @@ pub fn build_pdf(images: &[DynamicImage], output: &str, quality: &Quality) -> Re
     let catalog_id = doc.add_object(catalog);
     doc.trailer.set("Root", Object::Reference(catalog_id));
 
-    doc.save(output)?;
-
-    let size = std::fs::metadata(output)?.len();
-    let mode = match quality {
-        Quality::Lossless => "Flate lossless".to_string(),
-        Quality::Jpeg(q) => format!("JPEG q={}", q),
-    };
-    println!(
-        "  PDF generado: {} ({:.1} MB, {})",
-        output,
-        size as f64 / 1_048_576.0,
-        mode
-    );
-
-    Ok(())
+    Ok(doc)
 }
 
 fn encode_image_stream(img: &DynamicImage, quality: &Quality) -> Result<Stream> {

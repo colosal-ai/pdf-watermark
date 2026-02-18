@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use image::{DynamicImage, RgbaImage};
+use std::io::Cursor;
 
 const WM_MAX_W: u32 = 120;
 const WM_MIN_W: u32 = 107;
@@ -26,8 +27,25 @@ pub fn parse_quality(s: &str) -> Result<Quality> {
     }
 }
 
+pub fn prepare_from_bytes(data: &[u8]) -> Result<RgbaImage> {
+    let cursor = Cursor::new(data);
+    let logo = image::load(cursor, image::ImageFormat::Png)
+        .or_else(|_| {
+            let cursor = Cursor::new(data);
+            image::load(cursor, image::ImageFormat::Jpeg)
+        })
+        .or_else(|_| image::load_from_memory(data))?
+        .into_rgba8();
+    prepare_logo(logo)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn prepare(logo_path: &str) -> Result<RgbaImage> {
     let logo = image::open(logo_path)?.into_rgba8();
+    prepare_logo(logo)
+}
+
+fn prepare_logo(logo: RgbaImage) -> Result<RgbaImage> {
     let (orig_w, orig_h) = logo.dimensions();
     let (new_w, new_h) = calc_size(orig_w, orig_h);
 
@@ -45,7 +63,6 @@ pub fn prepare(logo_path: &str) -> Result<RgbaImage> {
         }
     }
 
-    println!("  Logo: {}x{} → {}x{}", orig_w, orig_h, new_w, new_h);
     Ok(result)
 }
 
