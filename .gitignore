@@ -1,0 +1,14 @@
+# Outputs
+output_*.pdf
+
+# Rust
+watermark_rs/target/
+
+# Python
+__pycache__/
+*.pyc
+tmp_pages/
+
+# Sources (binarios grandes, no trackear)
+sources/example1.pdf
+sources/*.ppm
