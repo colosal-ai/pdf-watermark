@@ -1,8 +1,8 @@
-name: Deploy WASM to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, wasm]
+    branches: [main]
 
 permissions:
   contents: read
@@ -10,34 +10,19 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
-
-      - name: Build WASM
-        working-directory: watermark_rs
-        run: wasm-pack build --target web --out-dir web/pkg
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: watermark_rs/web
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
