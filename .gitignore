@@ -10,5 +10,5 @@ __pycache__/
 tmp_pages/
 
 # Sources (binarios grandes, no trackear)
-sources/example1.pdf
+sources/example*.pdf
 sources/*.ppm
