@@ -28,6 +28,18 @@ struct Args {
     /// Archivo PDF de salida
     #[arg(short, long, default_value = "output_watermarked.pdf")]
     output: String,
+
+    /// Posición del watermark: tl,tc,tr,ml,mc,mr,bl,bc,br
+    #[arg(long, default_value = "br")]
+    position: String,
+
+    /// Ancho mínimo del watermark
+    #[arg(long, default_value = "107")]
+    min_w: u32,
+
+    /// Alto mínimo del watermark
+    #[arg(long, default_value = "21")]
+    min_h: u32,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -46,7 +58,7 @@ fn main() -> Result<()> {
     println!("  Extraídas {} páginas", pages.len());
 
     println!("[2/4] Preparando marca de agua...");
-    let wm = watermark::prepare(&args.logo)?;
+    let wm = watermark::prepare(&args.logo, args.min_w, args.min_h)?;
 
     println!("[3/4] Aplicando marca de agua...");
     let total = pages.len();
@@ -54,7 +66,7 @@ fn main() -> Result<()> {
         .into_iter()
         .enumerate()
         .map(|(i, page)| {
-            let img = watermark::apply(&page, &wm);
+            let img = watermark::apply(&page, &wm, &args.position);
             println!("  Página {}/{} ✓", i + 1, total);
             img
         })
