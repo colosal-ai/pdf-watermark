@@ -1,0 +1,15 @@
+{
+  "name": "watermark",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "watermark_bg.wasm",
+    "watermark.js",
+    "watermark.d.ts"
+  ],
+  "main": "watermark.js",
+  "types": "watermark.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
