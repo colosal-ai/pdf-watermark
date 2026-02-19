@@ -399,25 +399,27 @@ updateJpegOpts();
 
 function parsePageSpec(spec, max) {
   if (!spec.trim()) return [];
-  const indices = new Set();
+  const indices = [];
+  const seen = new Set();
+  function add(n) {
+    if (n >= 1 && n <= max && !seen.has(n)) { seen.add(n); indices.push(n - 1); }
+  }
   for (const part of spec.split(',')) {
     const trimmed = part.trim();
     if (!trimmed) continue;
     const range = trimmed.split('-');
     if (range.length === 1) {
-      const n = parseInt(range[0], 10);
-      if (n >= 1 && n <= max) indices.add(n - 1);
+      add(parseInt(range[0], 10));
     } else if (range.length === 2) {
       const a = parseInt(range[0], 10);
       const b = parseInt(range[1], 10);
       if (!isNaN(a) && !isNaN(b)) {
-        for (let i = Math.max(1, a); i <= Math.min(max, b); i++) {
-          indices.add(i - 1);
-        }
+        const step = a <= b ? 1 : -1;
+        for (let i = a; step > 0 ? i <= b : i >= b; i += step) add(i);
       }
     }
   }
-  return Array.from(indices).sort((a, b) => a - b);
+  return indices;
 }
 
 function setupDropZone(zone, accept, onLoad) {
